@@ -1,4 +1,3 @@
-
 public interface Vehicle {
   public enum VehicleType {
     CAR,
@@ -11,5 +10,6 @@ public interface Vehicle {
   }
 
   public String getType();
+
   public boolean isTollFree();
 }

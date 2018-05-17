@@ -1,3 +1,3 @@
 public interface VehicleFactory {
-    public Vehicle createVehicle(Vehicle.VehicleType type);
+  public Vehicle createVehicle(Vehicle.VehicleType type);
 }

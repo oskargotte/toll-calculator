@@ -1,25 +1,21 @@
-
-import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 
 public class TollCalculator {
 
-    private static final int NUM_MINUTES_OF_FREE_PASSES = 60;
-    private TollFeeTimeIntervalPolicy timeIntervalPolicy;
-    private CalendarPolicy calendarPolicy;
+  private static final int NUM_MINUTES_OF_FREE_PASSES = 60;
+  private static final int MIN_FEE = 0;
+  private TollFeeTimeIntervalPolicy timeIntervalPolicy;
+  private CalendarPolicy calendarPolicy;
 
-    public TollCalculator(TollFeeTimeIntervalPolicy timeIntervalPolicy, CalendarPolicy calendarPolicy) {
-        this.timeIntervalPolicy = timeIntervalPolicy;
-        this.calendarPolicy = calendarPolicy;
-    }
+  public TollCalculator(TollFeeTimeIntervalPolicy timeIntervalPolicy, CalendarPolicy calendarPolicy) {
+    this.timeIntervalPolicy = timeIntervalPolicy;
+    this.calendarPolicy = calendarPolicy;
+  }
 
-    /**
+  /**
    * Calculate the total toll fee for one day
    *
    * @param vehicle - the vehicle
@@ -27,11 +23,13 @@ public class TollCalculator {
    * @return - the total toll fee for that day
    */
   public int getTollFee(Vehicle vehicle, LocalDateTime... dates) {
+    if (vehicle.isTollFree()) return MIN_FEE;
+
     List<List<LocalDateTime>> datesByChargingIntervals = getDatesByChargingIntervals(dates);
     int totalFee = 0;
 
     for (List<LocalDateTime> chargingInterval : datesByChargingIntervals) {
-      int intervalFee = getMaxFee(chargingInterval, vehicle);
+      int intervalFee = getMaxFee(chargingInterval);
       totalFee += intervalFee;
     }
 
@@ -47,7 +45,7 @@ public class TollCalculator {
     LocalDateTime firstDateOfInterval = sortedDates.get(0);
 
     for (LocalDateTime date : sortedDates) {
-      if(date.isBefore(firstDateOfInterval.plusMinutes(NUM_MINUTES_OF_FREE_PASSES))) {
+      if (date.isBefore(firstDateOfInterval.plusMinutes(NUM_MINUTES_OF_FREE_PASSES))) {
         result.get(result.size() - 1).add(date);
       } else {
         firstDateOfInterval = date;
@@ -59,17 +57,16 @@ public class TollCalculator {
   }
 
 
-  private int getMaxFee(List<LocalDateTime> dates, Vehicle vehicle) {
+  private int getMaxFee(List<LocalDateTime> dates) {
     return dates.stream()
-            .map(date -> getTollFee(date, vehicle))
+            .map(date -> getTollFee(date))
             .reduce(Integer::max)
             .get();
   }
 
 
-  public int getTollFee(final LocalDateTime date, Vehicle vehicle) {
-    if(this.calendarPolicy.isTollFreeDay(date.toLocalDate()) || vehicle.isTollFree()) return 0;
+  private int getTollFee(final LocalDateTime date) {
+    if (this.calendarPolicy.isTollFreeDay(date.toLocalDate())) return MIN_FEE;
     return this.timeIntervalPolicy.getTollFee(date.toLocalTime());
   }
 }
-
