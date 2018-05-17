@@ -1,5 +1,8 @@
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 import java.time.*;
@@ -132,6 +135,20 @@ class TollCalculatorTest {
 
             assertEquals(expectedFee, fee, String.format("Fee should be %s kr at %s", expectedFee, entryTime));
         }
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = Vehicle.VehicleType.class,
+            names = {"MOTORBIKE", "DIPLOMAT", "EMERGENCY", "FOREIGN", "MILITARY", "TRACTOR"})
+    void ShouldBeNoFeeForSpecialVehicles(Vehicle.VehicleType vehicleType) {
+        LocalDateTime entryTime = toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("07:00"));
+
+        Vehicle tollFreeVehicleMock = new VehicleFactoryEvolve().createVehicle(vehicleType);
+
+        int fee = tollCalculator.getTollFee(entryTime, tollFreeVehicleMock);
+
+        assertEquals(NO_FEE, fee, String.format("%s should be toll free", tollFreeVehicleMock.getType()));
     }
 
     LocalDateTime toDate(LocalDate day, LocalTime timeOfDay) {

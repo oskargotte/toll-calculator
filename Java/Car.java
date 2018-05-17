@@ -2,6 +2,11 @@
 public class Car implements Vehicle {
   @Override
   public String getType() {
-    return "Car";
+    return VehicleType.CAR.toString();
+  }
+
+  @Override
+  public boolean isTollFree() {
+    return false;
   }
 }
