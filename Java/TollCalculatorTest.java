@@ -6,11 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class TollCalculatorTest {
 
-    private static final int HIGH_TOLL_FEE = 18;
-    private static final int MEDIUM_TOLL_FEE = 13;
-    private static final int LOW_TOLL_FEE = 8;
+    TollCalculator tollCalculator = new TollCalculator(new TollFeeTimeIntervalPolicyEvolve());
+    private static final int HIGH_TOLL_FEE = TollFeeTimeIntervalPolicyEvolve.HIGH_TOLL_FEE_EVOLVE;
+    private static final int MEDIUM_TOLL_FEE = TollFeeTimeIntervalPolicyEvolve.MEDIUM_TOLL_FEE_EVOLVE;
+    private static final int LOW_TOLL_FEE = TollFeeTimeIntervalPolicyEvolve.LOW_TOLL_FEE_EVOLVE;
 
-    private static final int NO_FEE = 0;
+    private static final int NO_FEE = TollFeeTimeIntervalPolicyBase.NO_TOLL_FEE;
 
     private static final LocalDate WEEKDAY_NON_HOLIDAY = LocalDate.of(2018, 5, 2);
     private static final Vehicle NORMAL_FEE_VEHICLE = new Car();
@@ -48,8 +49,6 @@ class TollCalculatorTest {
     }
 
     void AssertSameFeeForTimeInterval(int expectedFee, LocalTime intervalStart, LocalTime intervalEnd) {
-        TollCalculator tollCalculator = new TollCalculator();
-
         for(LocalTime entryTime = intervalStart;
             !entryTime.equals(intervalEnd);
             entryTime = entryTime.plusMinutes(1)){

@@ -5,7 +5,13 @@ import java.util.concurrent.*;
 
 public class TollCalculator {
 
-  /**
+    private TollFeeTimeIntervalPolicy timeIntervalPolicy;
+
+    public TollCalculator(TollFeeTimeIntervalPolicy timeIntervalPolicy) {
+        this.timeIntervalPolicy = timeIntervalPolicy;
+    }
+
+    /**
    * Calculate the total toll fee for one day
    *
    * @param vehicle - the vehicle
@@ -54,26 +60,7 @@ public class TollCalculator {
     int minute = calendar.get(Calendar.MINUTE);
     LocalTime time = LocalTime.of(hour, minute);
 
-    TollFeeTimeInterval[] intervals = {
-      new TollFeeTimeInterval(LocalTime.parse("06:00"), LocalTime.parse("06:30"), 8),
-      new TollFeeTimeInterval(LocalTime.parse("06:30"), LocalTime.parse("07:00"), 13),
-      new TollFeeTimeInterval(LocalTime.parse("07:00"), LocalTime.parse("08:00"), 18),
-      new TollFeeTimeInterval(LocalTime.parse("08:00"), LocalTime.parse("08:30"), 13),
-      new TollFeeTimeInterval(LocalTime.parse("08:30"), LocalTime.parse("15:00"), 8),
-      new TollFeeTimeInterval(LocalTime.parse("15:00"), LocalTime.parse("15:30"), 13),
-      new TollFeeTimeInterval(LocalTime.parse("15:30"), LocalTime.parse("17:00"), 18),
-      new TollFeeTimeInterval(LocalTime.parse("17:00"), LocalTime.parse("18:00"), 13),
-      new TollFeeTimeInterval(LocalTime.parse("18:00"), LocalTime.parse("18:30"), 8),
-    };
-
-    for(TollFeeTimeInterval interval : intervals) {
-      if (!time.isBefore(interval.getIntervalStart()) && time.isBefore(interval.getIntervalEnd())) {
-        return interval.getIntervalTollFee();
-      }
-    }
-
-    // Default toll fee is zero
-    return 0;
+    return this.timeIntervalPolicy.getTollFee(time);
   }
 
   private Boolean isTollFreeDate(Date date) {
