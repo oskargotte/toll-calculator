@@ -1,10 +1,8 @@
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.time.*;
-import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -18,6 +16,7 @@ class TollCalculatorTest {
     private static final int LOW_TOLL_FEE = TollFeeTimeIntervalPolicyEvolve.LOW_TOLL_FEE_EVOLVE;
 
     private static final int NO_FEE = TollFeeTimeIntervalPolicyBase.NO_TOLL_FEE;
+    private static final int MAX_FEE = 100;
 
     private static final LocalDate WEEKDAY_NON_HOLIDAY = LocalDate.of(2018, 5, 2);
     private static final Vehicle NORMAL_FEE_VEHICLE = new Car();
@@ -26,6 +25,7 @@ class TollCalculatorTest {
     void beforeEach() {
         TollFeeTimeIntervalPolicy highFeeAllDayPolicy = Mockito.mock(TollFeeTimeIntervalPolicyBase.class);
         Mockito.when(highFeeAllDayPolicy.getTollFee(Mockito.any())).thenReturn(HIGH_TOLL_FEE);
+        Mockito.when(highFeeAllDayPolicy.getDailyMaxFee()).thenReturn(MAX_FEE);
 
         tollCalculatorHighFeeAllDay = new TollCalculator(highFeeAllDayPolicy);
     }
@@ -65,7 +65,7 @@ class TollCalculatorTest {
 
     @Test
     void AVehicleShouldBeChargedForEachEntryIfMoreThanAnHourApart() {
-        Date[] entryTimesMoreThanAnHourApart = {
+        LocalDateTime[] entryTimesMoreThanAnHourApart = {
                 toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("15:30")),
                 toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("16:31")),
         };
@@ -77,11 +77,11 @@ class TollCalculatorTest {
 
     @Test
     void AVehicleShouldOnlyBeChargeOnceAnHour() {
-        Date[] entryTimesWithinAnHour = {
-                toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("06:45")),
-                toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("07:45")),
-                toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("15:30")),
-                toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("16:30")),
+        LocalDateTime[] entryTimesWithinAnHour = {
+                toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("06:45")), // Start of first chargeable period
+                toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("07:45")), // No fee since passing is within an hour
+                toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("07:46")), // Start of second chargeable period
+                toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("07:47")), // No fee since passing is within an hour
         };
         int fee = tollCalculatorHighFeeAllDay.getTollFee(NORMAL_FEE_VEHICLE, entryTimesWithinAnHour);
 
@@ -90,7 +90,7 @@ class TollCalculatorTest {
 
     @Test
     void AVehicleShouldOnlyBeChargeOnceAnHourWhenPassingAtDifferentDays() {
-        Date[] entryTimesWithinAnHour = {
+        LocalDateTime[] entryTimesWithinAnHour = {
                 toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("23:45")),
                 toDate(WEEKDAY_NON_HOLIDAY.plusDays(1), LocalTime.parse("00:15")),
         };
@@ -100,9 +100,20 @@ class TollCalculatorTest {
     }
 
     @Test
+    void ShouldBePossibleToReportDateUnordered() {
+        LocalDateTime[] entryTimesWithinAnHour = {
+                toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("07:45")),
+                toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("07:00")),
+        };
+        int fee = tollCalculatorHighFeeAllDay.getTollFee(NORMAL_FEE_VEHICLE, entryTimesWithinAnHour);
+
+        assertEquals(HIGH_TOLL_FEE, fee);
+    }
+
+    @Test
     void ShouldBeHighestFeeWhenMultiplePassesPerHour() {
         /* TODO: Is this really a requirement?? */
-        Date[] entryTimesWithDifferentFeesWithinAnHour = {
+        LocalDateTime[] entryTimesWithDifferentFeesWithinAnHour = {
                 toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("15:15")), // 13 kr
                 toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("15:45")), // 18 kr
         };
@@ -115,7 +126,7 @@ class TollCalculatorTest {
         for(LocalTime entryTime = intervalStart;
             !entryTime.equals(intervalEnd);
             entryTime = entryTime.plusMinutes(1)){
-            Date entryTimeOnNormalFeeDay = toDate(WEEKDAY_NON_HOLIDAY, entryTime);
+            LocalDateTime entryTimeOnNormalFeeDay = toDate(WEEKDAY_NON_HOLIDAY, entryTime);
 
             int fee = tollCalculator.getTollFee(entryTimeOnNormalFeeDay, NORMAL_FEE_VEHICLE);
 
@@ -123,9 +134,7 @@ class TollCalculatorTest {
         }
     }
 
-    Date toDate(LocalDate day, LocalTime timeOfDay) {
-        return Date.from(timeOfDay.atDate(day)
-                .atZone(ZoneId.systemDefault())
-                .toInstant());
+    LocalDateTime toDate(LocalDate day, LocalTime timeOfDay) {
+        return day.atTime(timeOfDay);
     }
 }

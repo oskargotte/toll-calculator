@@ -1,7 +1,7 @@
 import java.time.LocalTime;
 import java.util.Vector;
 
-public class TollFeeTimeIntervalPolicyBase implements TollFeeTimeIntervalPolicy {
+public abstract class TollFeeTimeIntervalPolicyBase implements TollFeeTimeIntervalPolicy {
     private Vector<TollFeeTimeInterval> intervals = new Vector<>();
 
     public static final int NO_TOLL_FEE = 0;

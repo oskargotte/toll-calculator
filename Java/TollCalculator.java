@@ -1,10 +1,16 @@
 
-import java.time.LocalTime;
+import java.time.DayOfWeek;
+import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.toList;
 
 public class TollCalculator {
 
+    private static final int NUM_MINUTES_OF_FREE_PASSES = 60;
     private TollFeeTimeIntervalPolicy timeIntervalPolicy;
 
     public TollCalculator(TollFeeTimeIntervalPolicy timeIntervalPolicy) {
@@ -18,28 +24,46 @@ public class TollCalculator {
    * @param dates   - date and time of all passes on one day
    * @return - the total toll fee for that day
    */
-  public int getTollFee(Vehicle vehicle, Date... dates) {
-    Date intervalStart = dates[0];
+  public int getTollFee(Vehicle vehicle, LocalDateTime... dates) {
+    List<List<LocalDateTime>> datesByChargingIntervals = getDatesByChargingIntervals(dates);
     int totalFee = 0;
-    for (Date date : dates) {
-      int nextFee = getTollFee(date, vehicle);
-      int tempFee = getTollFee(intervalStart, vehicle);
 
-      TimeUnit timeUnit = TimeUnit.MINUTES;
-      long diffInMillies = date.getTime() - intervalStart.getTime();
-      long minutes = timeUnit.convert(diffInMillies, TimeUnit.MILLISECONDS);
+    for (List<LocalDateTime> chargingInterval : datesByChargingIntervals) {
+      int intervalFee = getMaxFee(chargingInterval, vehicle);
+      totalFee += intervalFee;
+    }
 
-      if (minutes <= 60) {
-        if (totalFee > 0) totalFee -= tempFee;
-        if (nextFee >= tempFee) tempFee = nextFee;
-        totalFee += tempFee;
+    return Integer.min(totalFee, this.timeIntervalPolicy.getDailyMaxFee());
+  }
+
+
+  private List<List<LocalDateTime>> getDatesByChargingIntervals(LocalDateTime[] dates) {
+    List<List<LocalDateTime>> result = new ArrayList<>();
+    result.add(new ArrayList<>());
+
+    List<LocalDateTime> sortedDates = Arrays.stream(dates).sorted().collect(toList());
+    LocalDateTime firstDateOfInterval = sortedDates.get(0);
+
+    for (LocalDateTime date : sortedDates) {
+      if(date.isBefore(firstDateOfInterval.plusMinutes(NUM_MINUTES_OF_FREE_PASSES))) {
+        result.get(result.size() - 1).add(date);
       } else {
-        totalFee += nextFee;
+        firstDateOfInterval = date;
+        result.add(new ArrayList<>(Arrays.asList(date)));
       }
     }
-    if (totalFee > 60) totalFee = 60;
-    return totalFee;
+
+    return result;
   }
+
+
+  private int getMaxFee(List<LocalDateTime> dates, Vehicle vehicle) {
+    return dates.stream()
+            .map(date -> getTollFee(date, vehicle))
+            .reduce(Integer::max)
+            .get();
+  }
+
 
   private boolean isTollFreeVehicle(Vehicle vehicle) {
     if(vehicle == null) return false;
@@ -52,26 +76,18 @@ public class TollCalculator {
            vehicleType.equals(TollFreeVehicles.MILITARY.getType());
   }
 
-  public int getTollFee(final Date date, Vehicle vehicle) {
+  public int getTollFee(final LocalDateTime date, Vehicle vehicle) {
     if(isTollFreeDate(date) || isTollFreeVehicle(vehicle)) return 0;
-    Calendar calendar = GregorianCalendar.getInstance();
-    calendar.setTime(date);
-    int hour = calendar.get(Calendar.HOUR_OF_DAY);
-    int minute = calendar.get(Calendar.MINUTE);
-    LocalTime time = LocalTime.of(hour, minute);
-
-    return this.timeIntervalPolicy.getTollFee(time);
+    return this.timeIntervalPolicy.getTollFee(date.toLocalTime());
   }
 
-  private Boolean isTollFreeDate(Date date) {
-    Calendar calendar = GregorianCalendar.getInstance();
-    calendar.setTime(date);
-    int year = calendar.get(Calendar.YEAR);
-    int month = calendar.get(Calendar.MONTH);
-    int day = calendar.get(Calendar.DAY_OF_MONTH);
+  private Boolean isTollFreeDate(LocalDateTime date) {
+    int year = date.getYear();
+    int month = date.getMonthValue();
+    int day = date.getDayOfMonth();
 
-    int dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
-    if (dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY) return true;
+    DayOfWeek dayOfWeek = date.getDayOfWeek();
+    if (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY) return true;
 
     if (year == 2013) {
       if (month == Calendar.JANUARY && day == 1 ||
