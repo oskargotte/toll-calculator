@@ -1,4 +1,5 @@
 
+import java.time.LocalTime;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -51,17 +52,28 @@ public class TollCalculator {
     calendar.setTime(date);
     int hour = calendar.get(Calendar.HOUR_OF_DAY);
     int minute = calendar.get(Calendar.MINUTE);
+    LocalTime time = LocalTime.of(hour, minute);
 
-    if (hour == 6 && minute >= 0 && minute <= 29) return 8;
-    else if (hour == 6 && minute >= 30 && minute <= 59) return 13;
-    else if (hour == 7 && minute >= 0 && minute <= 59) return 18;
-    else if (hour == 8 && minute >= 0 && minute <= 29) return 13;
-    else if (hour >= 8 && hour <= 14 && minute >= 30 && minute <= 59) return 8;
-    else if (hour == 15 && minute >= 0 && minute <= 29) return 13;
-    else if (hour == 15 && minute >= 0 || hour == 16 && minute <= 59) return 18;
-    else if (hour == 17 && minute >= 0 && minute <= 59) return 13;
-    else if (hour == 18 && minute >= 0 && minute <= 29) return 8;
-    else return 0;
+    TollFeeTimeInterval[] intervals = {
+      new TollFeeTimeInterval(LocalTime.parse("06:00"), LocalTime.parse("06:30"), 8),
+      new TollFeeTimeInterval(LocalTime.parse("06:30"), LocalTime.parse("07:00"), 13),
+      new TollFeeTimeInterval(LocalTime.parse("07:00"), LocalTime.parse("08:00"), 18),
+      new TollFeeTimeInterval(LocalTime.parse("08:00"), LocalTime.parse("08:30"), 13),
+      new TollFeeTimeInterval(LocalTime.parse("08:30"), LocalTime.parse("15:00"), 8),
+      new TollFeeTimeInterval(LocalTime.parse("15:00"), LocalTime.parse("15:30"), 13),
+      new TollFeeTimeInterval(LocalTime.parse("15:30"), LocalTime.parse("17:00"), 18),
+      new TollFeeTimeInterval(LocalTime.parse("17:00"), LocalTime.parse("18:00"), 13),
+      new TollFeeTimeInterval(LocalTime.parse("18:00"), LocalTime.parse("18:30"), 8),
+    };
+
+    for(TollFeeTimeInterval interval : intervals) {
+      if (!time.isBefore(interval.getIntervalStart()) && time.isBefore(interval.getIntervalEnd())) {
+        return interval.getIntervalTollFee();
+      }
+    }
+
+    // Default toll fee is zero
+    return 0;
   }
 
   private Boolean isTollFreeDate(Date date) {
