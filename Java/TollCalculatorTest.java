@@ -151,6 +151,25 @@ class TollCalculatorTest {
         assertEquals(NO_FEE, fee, String.format("%s should be toll free", tollFreeVehicleMock.getType()));
     }
 
+    @Test
+    void ShouldBeAMaxFeePerDay() {
+        int maxFee = 50;
+        int tollFee = 30;
+        TollFeeTimeIntervalPolicy tollFeePolicyMock = Mockito.mock(TollFeeTimeIntervalPolicyBase.class);
+        Mockito.when(tollFeePolicyMock.getTollFee(Mockito.any())).thenReturn(tollFee);
+        Mockito.when(tollFeePolicyMock.getDailyMaxFee()).thenReturn(maxFee);
+        TollCalculator tollCalculatorWithMockedPolicy = new TollCalculator(tollFeePolicyMock);
+
+        LocalDateTime[] entryTimes = {
+                toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("06:00")), // tollFee = 30 kr
+                toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("08:00")), // tollFee = 30 kr
+        };
+
+        int fee = tollCalculatorWithMockedPolicy.getTollFee(NORMAL_FEE_VEHICLE, entryTimes); // 60 kr without max limit
+
+        assertEquals(maxFee, fee);
+    }
+
     LocalDateTime toDate(LocalDate day, LocalTime timeOfDay) {
         return day.atTime(timeOfDay);
     }
