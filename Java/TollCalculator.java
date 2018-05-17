@@ -12,9 +12,11 @@ public class TollCalculator {
 
     private static final int NUM_MINUTES_OF_FREE_PASSES = 60;
     private TollFeeTimeIntervalPolicy timeIntervalPolicy;
+    private CalendarPolicy calendarPolicy;
 
-    public TollCalculator(TollFeeTimeIntervalPolicy timeIntervalPolicy) {
+    public TollCalculator(TollFeeTimeIntervalPolicy timeIntervalPolicy, CalendarPolicy calendarPolicy) {
         this.timeIntervalPolicy = timeIntervalPolicy;
+        this.calendarPolicy = calendarPolicy;
     }
 
     /**
@@ -66,31 +68,8 @@ public class TollCalculator {
 
 
   public int getTollFee(final LocalDateTime date, Vehicle vehicle) {
-    if(isTollFreeDate(date) || vehicle.isTollFree()) return 0;
+    if(this.calendarPolicy.isTollFreeDay(date.toLocalDate()) || vehicle.isTollFree()) return 0;
     return this.timeIntervalPolicy.getTollFee(date.toLocalTime());
-  }
-
-  private Boolean isTollFreeDate(LocalDateTime date) {
-    int year = date.getYear();
-    int month = date.getMonthValue();
-    int day = date.getDayOfMonth();
-
-    DayOfWeek dayOfWeek = date.getDayOfWeek();
-    if (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY) return true;
-
-    if (year == 2013) {
-      if (month == Calendar.JANUARY && day == 1 ||
-          month == Calendar.MARCH && (day == 28 || day == 29) ||
-          month == Calendar.APRIL && (day == 1 || day == 30) ||
-          month == Calendar.MAY && (day == 1 || day == 8 || day == 9) ||
-          month == Calendar.JUNE && (day == 5 || day == 6 || day == 21) ||
-          month == Calendar.JULY ||
-          month == Calendar.NOVEMBER && day == 1 ||
-          month == Calendar.DECEMBER && (day == 24 || day == 25 || day == 26 || day == 31)) {
-        return true;
-      }
-    }
-    return false;
   }
 }
 

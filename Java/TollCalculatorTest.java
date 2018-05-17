@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class TollCalculatorTest {
 
-    TollCalculator tollCalculator = new TollCalculator(new TollFeeTimeIntervalPolicyEvolve());
+    TollCalculator tollCalculator = new TollCalculator(new TollFeeTimeIntervalPolicyEvolve(), CalendarPolicyEvolve.getInstance());
     TollCalculator tollCalculatorHighFeeAllDay;
 
     private static final int HIGH_TOLL_FEE = TollFeeTimeIntervalPolicyEvolve.HIGH_TOLL_FEE_EVOLVE;
@@ -22,6 +22,9 @@ class TollCalculatorTest {
     private static final int MAX_FEE = 100;
 
     private static final LocalDate WEEKDAY_NON_HOLIDAY = LocalDate.of(2018, 5, 2);
+    private static final LocalDate WEEKEND_DAY = LocalDate.of(2018, 5, 5);
+    private static final LocalDate WEEKDAY_HOLIDAY = LocalDate.of(2018, 5, 1);
+    private static final LocalDate GOOD_FRIDAY_2013 = LocalDate.of(2013, 3, 29);
     private static final Vehicle NORMAL_FEE_VEHICLE = new Car();
 
     @BeforeEach
@@ -30,7 +33,7 @@ class TollCalculatorTest {
         Mockito.when(highFeeAllDayPolicy.getTollFee(Mockito.any())).thenReturn(HIGH_TOLL_FEE);
         Mockito.when(highFeeAllDayPolicy.getDailyMaxFee()).thenReturn(MAX_FEE);
 
-        tollCalculatorHighFeeAllDay = new TollCalculator(highFeeAllDayPolicy);
+        tollCalculatorHighFeeAllDay = new TollCalculator(highFeeAllDayPolicy, CalendarPolicyEvolve.getInstance());
     }
 
     @Test
@@ -158,7 +161,7 @@ class TollCalculatorTest {
         TollFeeTimeIntervalPolicy tollFeePolicyMock = Mockito.mock(TollFeeTimeIntervalPolicyBase.class);
         Mockito.when(tollFeePolicyMock.getTollFee(Mockito.any())).thenReturn(tollFee);
         Mockito.when(tollFeePolicyMock.getDailyMaxFee()).thenReturn(maxFee);
-        TollCalculator tollCalculatorWithMockedPolicy = new TollCalculator(tollFeePolicyMock);
+        TollCalculator tollCalculatorWithMockedPolicy = new TollCalculator(tollFeePolicyMock, CalendarPolicyEvolve.getInstance());
 
         LocalDateTime[] entryTimes = {
                 toDate(WEEKDAY_NON_HOLIDAY, LocalTime.parse("06:00")), // tollFee = 30 kr
@@ -168,6 +171,33 @@ class TollCalculatorTest {
         int fee = tollCalculatorWithMockedPolicy.getTollFee(NORMAL_FEE_VEHICLE, entryTimes); // 60 kr without max limit
 
         assertEquals(maxFee, fee);
+    }
+
+    @Test
+    void WeekendsShouldBeTollFree() {
+        LocalDateTime entryTime = toDate(WEEKEND_DAY, LocalTime.parse("07:00"));
+
+        int fee = tollCalculator.getTollFee(entryTime, NORMAL_FEE_VEHICLE);
+
+        assertEquals(NO_FEE, fee);
+    }
+
+    @Test
+    void WeekdayHolidayShouldBeTollFree() {
+        LocalDateTime entryTime = toDate(WEEKDAY_HOLIDAY, LocalTime.parse("07:00"));
+
+        int fee = tollCalculator.getTollFee(entryTime, NORMAL_FEE_VEHICLE);
+
+        assertEquals(NO_FEE, fee);
+    }
+
+    @Test
+    void GoodFridayShouldBeTollFree() {
+        LocalDateTime entryTime = LocalDateTime.of(GOOD_FRIDAY_2013, LocalTime.parse("07:00"));
+
+        int fee = tollCalculator.getTollFee(entryTime, NORMAL_FEE_VEHICLE);
+
+        assertEquals(NO_FEE, fee);
     }
 
     LocalDateTime toDate(LocalDate day, LocalTime timeOfDay) {
